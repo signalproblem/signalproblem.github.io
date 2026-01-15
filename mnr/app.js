@@ -81,13 +81,9 @@ document.addEventListener('DOMContentLoaded', () => {
 // Fetch live data from NY Open Data API
 async function fetchLiveData() {
     try {
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        const dateStr = thirtyDaysAgo.toISOString().split('T')[0];
-
-        const query = encodeURIComponent(`date >= '${dateStr}'`);
+        // Fetch recent data - filter client-side since field names vary
         const response = await fetch(
-            `${API_BASE}?$where=${query}&$limit=5000`,
+            `${API_BASE}?$limit=5000&$order=:id DESC`,
             {
                 headers: {
                     'Accept': 'application/json'
@@ -95,14 +91,25 @@ async function fetchLiveData() {
             }
         );
 
-        if (!response.ok) throw new Error('API request failed');
+        if (!response.ok) throw new Error(`API request failed: ${response.status}`);
 
         const data = await response.json();
 
         if (data && data.length > 0) {
-            processLiveData(data);
+            // Filter to last 30 days client-side
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+            const recentData = data.filter(record => {
+                const dateVal = record.date || record.delay_date || record.service_date || record.period;
+                if (!dateVal) return true;
+                const recordDate = new Date(dateVal);
+                return recordDate >= thirtyDaysAgo;
+            });
+
+            processLiveData(recentData.length > 0 ? recentData : data);
             isUsingLiveData = true;
-            console.log('Using live data from NY Open Data');
+            console.log(`Using live data from NY Open Data (${recentData.length} records)`);
         }
     } catch (error) {
         console.log('Using sample data (API unavailable):', error.message);
