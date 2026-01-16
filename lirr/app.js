@@ -129,8 +129,8 @@ async function fetchLiveData() {
     // Update badge to show data source
     const badge = document.getElementById('dataBadge');
     if (isUsingLiveData) {
-        badge.textContent = 'LIVE DATA';
-        badge.title = 'Real-time data from NY Open Data';
+        badge.textContent = 'LAST 30 DAYS';
+        badge.title = 'Data from NY Open Data (last 30 days)';
     } else {
         badge.textContent = 'SAMPLE DATA';
         badge.title = 'Using sample data (API unavailable)';
@@ -187,14 +187,14 @@ function processLiveData(data) {
             const worstDelay = Math.max(...delays);
 
             // Calculate misery score (weighted formula)
-            // Calibrated: typical day ~35-45, bad day ~60-75, disaster ~80+
-            const delayRatio = delays.length / stats.totalTrains;
+            // Recalibrated for real data: typical ~30-45, bad ~55-70, disaster ~75+
+            // Using log scale for counts since dataset only has delayed trains
             const miseryScore = Math.min(100, Math.round(
-                (avgDelay * 1.5) +                    // 5 min avg = 7.5 pts
-                (delayRatio * 25) +                   // 20% delayed = 5 pts
-                (stats.cancelledCount * 0.8) +        // 5 cancelled = 4 pts
-                (worstDelay / 8) +                    // 40 min worst = 5 pts
-                15                                     // Base misery (it's LIRR after all)
+                Math.min(25, avgDelay * 2) +                           // Cap at 25 pts (12+ min avg)
+                Math.min(20, Math.log10(delays.length + 1) * 7) +      // Log scale for count, cap 20
+                Math.min(15, Math.log10(stats.cancelledCount + 1) * 6) + // Log scale, cap 15
+                Math.min(20, worstDelay / 5) +                         // Cap at 20 pts (100+ min)
+                10                                                      // Base misery
             ));
 
             branchData[branch] = {
@@ -451,11 +451,10 @@ function renderCausesChart() {
         const displayCause = CAUSE_TRANSLATIONS[cause] || cause;
         return `
             <div class="cause-row">
-                <span class="cause-label">${displayCause}</span>
+                <span class="cause-label" title="${displayCause}">${displayCause}</span>
                 <div class="cause-bar-container">
-                    <div class="cause-bar" style="width: ${percent}%">
-                        <span class="cause-percent">${percent}%</span>
-                    </div>
+                    <div class="cause-bar" style="width: ${Math.max(percent, 8)}%"></div>
+                    <span class="cause-percent">${percent}%</span>
                 </div>
             </div>
         `;

@@ -118,8 +118,8 @@ async function fetchLiveData() {
     // Update badge to show data source
     const badge = document.getElementById('dataBadge');
     if (isUsingLiveData) {
-        badge.textContent = 'LIVE DATA';
-        badge.title = 'Real-time data from NY Open Data';
+        badge.textContent = 'LAST 30 DAYS';
+        badge.title = 'Data from NY Open Data (last 30 days)';
     } else {
         badge.textContent = 'SAMPLE DATA';
         badge.title = 'Using sample data (API unavailable)';
@@ -170,13 +170,14 @@ function processLiveData(data) {
             const avgDelay = delays.reduce((a, b) => a + b, 0) / delays.length;
             const worstDelay = Math.max(...delays);
 
-            const delayRatio = delays.length / stats.totalTrains;
+            // Recalibrated for real data: typical ~25-40, bad ~50-65, disaster ~70+
+            // MNR gets slightly lower base (it's "nicer")
             const miseryScore = Math.min(100, Math.round(
-                (avgDelay * 1.5) +
-                (delayRatio * 25) +
-                (stats.cancelledCount * 0.8) +
-                (worstDelay / 8) +
-                12  // Lower base for MNR (it's "nicer")
+                Math.min(25, avgDelay * 2) +                           // Cap at 25 pts
+                Math.min(20, Math.log10(delays.length + 1) * 7) +      // Log scale, cap 20
+                Math.min(15, Math.log10(stats.cancelledCount + 1) * 6) + // Log scale, cap 15
+                Math.min(20, worstDelay / 5) +                         // Cap at 20 pts
+                8                                                       // Lower base for MNR
             ));
 
             lineData[line] = {
@@ -409,11 +410,10 @@ function renderCausesChart() {
         const displayCause = CAUSE_TRANSLATIONS[cause] || cause;
         return `
             <div class="cause-row">
-                <span class="cause-label">${displayCause}</span>
+                <span class="cause-label" title="${displayCause}">${displayCause}</span>
                 <div class="cause-bar-container">
-                    <div class="cause-bar" style="width: ${percent}%">
-                        <span class="cause-percent">${percent}%</span>
-                    </div>
+                    <div class="cause-bar" style="width: ${Math.max(percent, 8)}%"></div>
+                    <span class="cause-percent">${percent}%</span>
                 </div>
             </div>
         `;

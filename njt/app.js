@@ -312,11 +312,10 @@ function renderCausesChart() {
         const displayCause = CAUSE_TRANSLATIONS[cause] || cause;
         return `
             <div class="cause-row">
-                <span class="cause-label">${displayCause}</span>
+                <span class="cause-label" title="${displayCause}">${displayCause}</span>
                 <div class="cause-bar-container">
-                    <div class="cause-bar" style="width: ${percent}%">
-                        <span class="cause-percent">${percent}%</span>
-                    </div>
+                    <div class="cause-bar" style="width: ${Math.max(percent, 8)}%"></div>
+                    <span class="cause-percent">${percent}%</span>
                 </div>
             </div>
         `;
